@@ -3,10 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Helper to check if a value is empty, placeholder, or stringified undefined/null
+const isValidEnv = (val) => {
+  if (!val) return false;
+  const str = String(val).trim().toLowerCase();
+  return str !== '' && str !== 'undefined' && str !== 'null' && !str.includes('placeholder');
+};
+
 // Check if valid Supabase credentials are provided
-export const isMockMode = !supabaseUrl || !supabaseAnonKey || 
-                          supabaseUrl.includes('placeholder') || 
-                          supabaseAnonKey.includes('placeholder');
+export const isMockMode = !isValidEnv(supabaseUrl) || !isValidEnv(supabaseAnonKey);
 
 export const supabase = !isMockMode ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
