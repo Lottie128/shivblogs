@@ -119,6 +119,7 @@ function App() {
   const [username, setUsername] = useState('');
   const [avatarSeed, setAvatarSeed] = useState(Math.random().toString(36).substring(7));
   const [authError, setAuthError] = useState(null);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
 
   // Application functional states
   const [blogs, setBlogs] = useState([]);
@@ -165,7 +166,7 @@ function App() {
         const { data } = await db.auth.getUser();
         if (data?.user) {
           setSession(data.user);
-          addToast(`Welcome back, ${data.user.raw_user_meta_data?.username || 'user'}! 🚀`, 'success');
+          addToast(`Welcome back, ${data.user.user_metadata?.username || 'user'}! 🚀`, 'success');
         }
       } catch (err) {
         console.error(err);
@@ -215,7 +216,7 @@ function App() {
   const handleAuth = async (e) => {
     e.preventDefault();
     setAuthError(null);
-    setAuthLoading(true);
+    setAuthSubmitting(true);
 
     try {
       if (authTab === 'signup') {
@@ -226,6 +227,7 @@ function App() {
           email,
           password,
           options: {
+            emailRedirectTo: window.location.origin,
             data: {
               username,
               avatar_url: avatarUrl
@@ -234,12 +236,13 @@ function App() {
         });
         if (error) throw error;
         
-        // Supabase might send confirmation email or sign in immediately
-        if (data?.user) {
-          setSession(data.user);
+        // If Supabase returned a real session, sign in immediately
+        if (data?.session) {
+          setSession(data.session.user);
           addToast('Account created successfully! Welcome to ShivBlogs 🤪', 'success');
         } else {
-          addToast('Please check your email to confirm registration!', 'info');
+          // Email confirmation is required — do NOT set session
+          addToast('Check your email to confirm your account! 📧', 'info');
         }
       } else {
         const { data, error } = await db.auth.signInWithPassword({ email, password });
@@ -253,7 +256,7 @@ function App() {
       setAuthError(err.message);
       addToast(err.message, 'error');
     } finally {
-      setAuthLoading(false);
+      setAuthSubmitting(false);
     }
   };
 
@@ -285,7 +288,7 @@ function App() {
         category,
         emoji: selectedEmoji,
         user_id: session.id,
-        author_name: session.raw_user_meta_data?.username || 'Anonymous'
+        author_name: session.user_metadata?.username || 'Anonymous'
       };
 
       const { data, error } = await db.blogs.insert(blogData);
@@ -390,7 +393,7 @@ function App() {
         blog_id: blogId,
         user_id: session.id,
         content: newCommentText.trim(),
-        author_name: session.raw_user_meta_data?.username || 'Anonymous'
+        author_name: session.user_metadata?.username || 'Anonymous'
       };
 
       const { data, error } = await db.comments.insert(commentData);
@@ -649,8 +652,8 @@ VITE_SUPABASE_ANON_KEY=your-anon-api-key`}
                 </div>
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
-                {authTab === 'login' ? 'Sign In Now' : 'Create Account'} <ChevronRight size={18} />
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }} disabled={authSubmitting}>
+                {authSubmitting ? 'Please wait...' : (authTab === 'login' ? 'Sign In Now' : 'Create Account')} {!authSubmitting && <ChevronRight size={18} />}
               </button>
             </form>
           </div>
@@ -665,12 +668,12 @@ VITE_SUPABASE_ANON_KEY=your-anon-api-key`}
             <div className="user-profile">
               <div className="avatar-wrapper">
                 <img 
-                  src={session.raw_user_meta_data?.avatar_url || `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${session.id}`} 
+                  src={session.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${session.id}`} 
                   alt="My Avatar" 
                   className="avatar-img" 
                 />
               </div>
-              <span className="profile-name">{session.raw_user_meta_data?.username || 'User'}</span>
+              <span className="profile-name">{session.user_metadata?.username || 'User'}</span>
               <button onClick={handleSignOut} className="btn-signout" title="Sign Out">
                 <LogOut size={16} />
               </button>
