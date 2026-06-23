@@ -14,11 +14,13 @@ const isPresent = (val) => {
 const isRealUrl = (val) =>
   isPresent(val) && /^https?:\/\//i.test(String(val).trim()) && !String(val).includes('your-project-id');
 
-// A real Supabase anon/publishable key is a JWT — it ALWAYS starts with "eyJ".
-// The placeholder "your-anon-api-key-here" does not, so this is the reliable
-// signal. Without this check the placeholder slipped through and the app built a
-// real client against a fake project → "No API key found in request" on signup.
-const isRealKey = (val) => isPresent(val) && /^eyJ/.test(String(val).trim());
+// A real Supabase client key is either the legacy anon JWT (starts with "eyJ")
+// or the new publishable key (starts with "sb_publishable_" / "sb_"). The
+// placeholder "your-anon-api-key-here" matches neither, so this reliably tells
+// a configured project from an unedited .env. (Without it the placeholder slipped
+// through and the app built a real client against a fake project →
+// "No API key found in request" on signup.)
+const isRealKey = (val) => isPresent(val) && /^(eyJ|sb_)/.test(String(val).trim());
 
 // Fall back to the local mock UNLESS both credentials are real.
 export const isMockMode = !isRealUrl(supabaseUrl) || !isRealKey(supabaseAnonKey);
