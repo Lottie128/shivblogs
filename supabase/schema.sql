@@ -1,5 +1,6 @@
 -- Supabase Database Schema for ShivBlogs
 -- This script contains table definitions, constraints, triggers, and Row Level Security (RLS) policies.
+-- It is designed to be fully idempotent (safe to rerun/redeploy).
 
 -- 1. Create Profiles Table (extends Supabase Auth users)
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -147,6 +148,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
