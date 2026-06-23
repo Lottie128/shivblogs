@@ -161,28 +161,36 @@ function App() {
 
   // Get current user details upon load
   useEffect(() => {
-    const initSession = async () => {
-      try {
-        const { data } = await db.auth.getUser();
-        if (data?.user) {
-          setSession(data.user);
-          addToast(`Welcome back, ${data.user.user_metadata?.username || 'user'}! 🚀`, 'success');
+    if (isMockMode) {
+      // Mock mode: just check localStorage
+      const initMockSession = async () => {
+        try {
+          const { data } = await db.auth.getUser();
+          if (data?.user) {
+            setSession(data.user);
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setAuthLoading(false);
         }
-      } catch (err) {
-        console.error(err);
-      } finally {
+      };
+      initMockSession();
+      return;
+    }
+
+    // Real Supabase: use onAuthStateChange as the single source of truth.
+    // It fires once immediately with INITIAL_SESSION, then on every auth change.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, supaSession) => {
+      setSession(supaSession?.user || null);
+
+      // Clear the loading screen after the first auth check completes
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         setAuthLoading(false);
       }
-    };
-    initSession();
+    });
 
-    // Listen to real Supabase auth state change if not mock
-    if (!isMockMode) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setSession(session?.user || null);
-      });
-      return () => subscription.unsubscribe();
-    }
+    return () => subscription.unsubscribe();
   }, []);
 
   // Fetch blogs, likes and comments whenever session changes
