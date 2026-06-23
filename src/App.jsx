@@ -15,6 +15,7 @@ import {
   Smile, 
   Info,
   ChevronRight,
+  Compass,
   Flame,
   Lightbulb,
   Cat,
