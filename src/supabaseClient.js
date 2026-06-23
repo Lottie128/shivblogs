@@ -3,15 +3,33 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Helper to check if a value is empty, placeholder, or stringified undefined/null
-const isValidEnv = (val) => {
+// Is a value present and not a stringified empty/undefined/null?
+const isPresent = (val) => {
   if (!val) return false;
   const str = String(val).trim().toLowerCase();
-  return str !== '' && str !== 'undefined' && str !== 'null' && !str.includes('placeholder');
+  return str !== '' && str !== 'undefined' && str !== 'null';
 };
 
-// Check if valid Supabase credentials are provided
-export const isMockMode = !isValidEnv(supabaseUrl) || !isValidEnv(supabaseAnonKey);
+// A real Supabase project URL: https://<ref>.supabase.co (reject the .env.example placeholder).
+const isRealUrl = (val) =>
+  isPresent(val) && /^https?:\/\//i.test(String(val).trim()) && !String(val).includes('your-project-id');
+
+// A real Supabase anon/publishable key is a JWT — it ALWAYS starts with "eyJ".
+// The placeholder "your-anon-api-key-here" does not, so this is the reliable
+// signal. Without this check the placeholder slipped through and the app built a
+// real client against a fake project → "No API key found in request" on signup.
+const isRealKey = (val) => isPresent(val) && /^eyJ/.test(String(val).trim());
+
+// Fall back to the local mock UNLESS both credentials are real.
+export const isMockMode = !isRealUrl(supabaseUrl) || !isRealKey(supabaseAnonKey);
+
+if (isMockMode) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[ShivBlogs] Running in DEMO mode (localStorage) — Supabase credentials missing or still set to the .env.example placeholders.\n' +
+    'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env (the anon key starts with "eyJ"), then restart the dev server.'
+  );
+}
 
 export const supabase = !isMockMode ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
